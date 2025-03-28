@@ -1,0 +1,15 @@
+# .gitignore
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.env.local
+.env.*.local
+instance/
+.DS_Store
+.idea/
+.vscode/
+*.log
+docker-compose.override.yml
+db_data/
