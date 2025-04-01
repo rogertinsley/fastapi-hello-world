@@ -1,10 +1,50 @@
 services:
-  web:
+  db:
+    image: mongo:latest
+    container_name: todo_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: mongosh --quiet --eval 'db.runCommand("ping").ok'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    command: mongod --quiet --logpath /dev/null
+
+  redis:
+    image: redis:alpine
+    container_name: todo_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  app:
     build: .
+    container_name: fastapi_todo
+    restart: always
+    depends_on:
+      - db
+    environment:
+      MONGO_URL: mongodb://db:27017/todo_db
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-    environment:
-      - ENV=development
+
+  worker:
+    build: .
+    container_name: celery_worker
     restart: always
+    depends_on:
+      - redis
+      - app
+    environment:
+      MONGO_URL: mongodb://db:27017/todo_db
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: celery -A app.tasks.reminder_tasks.celery_app worker --loglevel=info
+
+volumes:
+  mongo_data:
